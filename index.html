@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Reserva de Estações</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER BANNER -->
+        <div class="header-area">
+            <div class="logo-container">
+                <img src="./banner.png" alt="Reserva de Estações" class="site-logo" 
+                     onerror="this.src='./logo.png'; this.onerror=function(){this.style.display='none'; document.querySelector('.logo-fallback').style.display='block';}">
+                <h1 class="logo-fallback" style="display:none; color:#2c3e50; margin-top:20px;">Reserva de Estações</h1>
+            </div>
+        </div>
+
+        <!-- PAINEL DE OCUPAÇÃO GERAL -->
+        <div class="occupancy-panel">
+            <h3>Taxa de Ocupação do Dia</h3>
+            <div class="progress-container">
+                <div class="progress-bar bar-aquario" id="prog-aquario" style="width: 0%">
+                    <span class="tooltip">Aquário: 0%</span>
+                </div>
+                <div class="progress-bar bar-salao" id="prog-salao" style="width: 0%">
+                    <span class="tooltip">Salão: 0%</span>
+                </div>
+                <div class="progress-bar bar-gouvea" id="prog-gouvea" style="width: 0%">
+                    <span class="tooltip">Gouvêa: 0%</span>
+                </div>
+            </div>
+            <div class="progress-legend">
+                <div class="leg-item"><span class="dot aquario"></span>Aquário</div>
+                <div class="leg-item"><span class="dot salao"></span>Salão</div>
+                <div class="leg-item"><span class="dot gouvea"></span>Gouvêa</div>
+                <div class="leg-val" id="total-percent">Total: 0%</div>
+            </div>
+        </div>
+
+        <!-- SELETOR DE DATA -->
+        <div class="date-selector-container">
+            <label>Data da Reserva:</label>
+            <input type="date" id="reservation-date">
+            <p class="week-info" id="week-range-text">Carregando calendário...</p>
+        </div>
+
+        <!-- LEGENDA DO MAPA -->
+        <div class="instructions">
+            <div class="legend">
+                <span class="available">Livre</span>
+                <span class="occupied">Ocupado</span>
+                <span class="selected">Selecionado</span>
+            </div>
+        </div>
+
+        <!-- ÁREAS / MAPA DE ASSENTOS -->
+        <div class="section">
+            <h2>Aquário - Atendimento a bancos</h2>
+<p class="section-subtitle">BTG, Centurion, Concierge e PTS</p>
+            <div class="seating-area">
+                <div class="row" data-location="Aquario" data-row="1"><div class="seats"></div></div>
+                <div class="row" data-location="Aquario" data-row="2"><div class="seats"></div></div>
+                <div class="row" data-location="Aquario" data-row="3"><div class="seats"></div></div>
+                <div class="row" data-location="Aquario" data-row="4"><div class="seats"></div></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Salão - Áreas operacionais</h2>
+<p class="section-subtitle">CEP, Eventos, Lazer, ICs, Supplier e Operadora</p>
+            <div class="seating-area">
+                <div class="row" data-location="Salao" data-row="1"><div class="seats"></div></div>
+                <div class="row" data-location="Salao" data-row="2"><div class="seats"></div></div>
+                <div class="row" data-location="Salao" data-row="3"><div class="seats"></div></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Gouvêa - Áreas de suporte</h2>
+<p class="section-subtitle">C&P, Financeiro, MKT, Qualidade, Projetos e TI</p>
+            <div class="seating-area">
+                <div class="row" data-location="Gouvea" data-row="1"><div class="seats"></div></div>
+                <div class="row" data-location="Gouvea" data-row="2"><div class="seats"></div></div>
+            </div>
+        </div>
+
+        <!-- --- NOVA POSIÇÃO DO DASHBOARD DE CARDS --- -->
+        
+        <div class="section-title-container">
+            <h3 class="dashboard-title">Reservas x Slots por setor</h3>
+            <hr class="title-divider">
+        </div>
+
+        <div id="dashboard-cards" class="dashboard-grid">
+            <p class="loading-text">Carregando dados da equipe...</p>
+        </div>
+        
+        <!-- ------------------------------------------ -->
+
+<!-- QUADRO DE AVISOS -->
+        <div class="notice-board">
+            <h3>Regras de utilização e boas práticas</h3>
+            <ul>
+                <li>Reserve apenas o espaço que você realmente vai usar.</li>
+                <li>As reservas são pessoais e intransferíveis. Não reserve em nome de colegas.</li>
+                <li>As reservas abrem para a semana atual e a próxima. Organize sua agenda com antecedência para garantir o lugar.</li>
+                <li>Respeite os assentos destinados à sua área.</li>
+                <li>Se reservou assento e não vai comparecer, lembre-se de avisar o C&P para liberar o espaço em sistema.</li>
+            </ul>
+            <p class="notice-quote">"Cada assento ocupado é uma oportunidade de trabalho - para você ou um colega. Reserve com consciência!"</p>
+        </div>
+
+        <!-- MODAL DE CONFIRMAÇÃO -->
+        <div id="reservation-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h3>Confirmar Reserva</h3>
+                <p class="modal-detail">Assento: <span id="selected-seat"></span></p>
+                <form id="reservation-form">
+                    <label>Nome Completo</label>
+                    <input type="text" id="full-name" required placeholder="Digite seu nome">
+                    
+                    <label>Setor</label>
+                    <select id="department" required>
+                        <option value="">Carregando...</option>
+                    </select>
+                    
+                    <button type="submit">Confirmar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
