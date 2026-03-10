@@ -197,33 +197,33 @@ function generateSeats() {
 }
 
 function updateSeatsStatus() {
-    const date = document.getElementById('reservation-date').value;
-    document.querySelectorAll('.seat').forEach(seat => {
-        const r = allReservations.find(res => 
-            res.data === date && 
-            String(res.local) === seat.dataset.loc && 
-            String(res.baia) === seat.dataset.row && 
-            String(res.assento) === seat.dataset.num
-        );
-        
-        const isSel = selectedSeat === seat;
-        seat.className = isSel ? 'seat selected' : 'seat available';
-        seat.title = 'Livre';
-        
-        if (r) {
-            seat.className = 'seat occupied';
-            seat.title = `${r.nome} (${r.setor})`;
-            if (isSel) {
-                closeModal();
-                alert(`Ocupado por ${r.nome}`);
-                selectedSeat = null;
-            }
-        }
-    });
+  const date = document.getElementById('reservation-date').value;
+  document.querySelectorAll('.seat').forEach(seat => {
+    const r = allReservations.find(res =>
+      res.data === date &&
+      String(res.local) === seat.dataset.loc &&
+      String(res.baia) === seat.dataset.row &&
+      String(res.assento) === seat.dataset.num
+    );
+    const isSel = selectedSeat === seat;
+    seat.className = isSel ? 'seat selected' : 'seat available';
+    seat.title = 'Livre';
+    if (r) {
+      if (r.checkin_ts) {
+        seat.className = 'seat checkedin';
+        seat.title = '✅ Check-in realizado: ' + r.nome + ' · ' + r.setor;
+      } else {
+        seat.className = 'seat occupied';
+        seat.title = r.nome + ' · ' + r.setor;
+      }
+      if (isSel) { closeModal(); alert('Ocupado por ' + r.nome); selectedSeat = null; }
+    }
+  });
 }
 
 function selectSeat(seat) {
-    if (seat.classList.contains('occupied')) return alert('Ocupado!');
+    if (seat.classList.contains('occupied') || seat.classList.contains('checkedin')) return alert('Ocupado!');
+
     if (selectedSeat) {
         selectedSeat.classList.remove('selected');
         selectedSeat.classList.add('available');
@@ -305,10 +305,13 @@ function openCheckinList() {
     Object.keys(areas).forEach(area => {
       html += `<div style="margin-bottom:14px;"><span class="checkin-area-title">📍 ${area}</span>`;
       areas[area].forEach(r => {
+        const done = !!r.checkin_ts;
         const rJson = encodeURIComponent(JSON.stringify(r));
-        html += `<div class="checkin-res-item" onclick="selectCheckin('${rJson}')">
+        const clickHandler = done ? '' : `onclick="selectCheckin('${rJson}')"`;
+        html += `<div class="checkin-res-item${done ? ' done' : ''}" ${clickHandler}>
           <strong>${r.nome}</strong> — ${r.setor}
           <small>Baia ${r.baia} · Assento ${r.assento}</small>
+          ${done ? '<span class="checkin-done-badge">✅ Check-in já realizado</span>' : ''}
         </div>`;
       });
       html += `</div>`;
@@ -371,53 +374,58 @@ function toggleDefeito(key, show) {
 
 async function runCheckinSpeedTest() {
   const btn = document.getElementById('speedtest-btn');
-  btn.textContent = '⏳ Testando...';
   btn.disabled = true;
 
-  // Detectar tipo de conexão
+  // Detecção de tipo de conexão
   let tipoConexao = 'Não identificado';
   if (navigator.connection) {
     const c = navigator.connection;
-    if (c.type === 'ethernet') tipoConexao = 'Cabo';
-    else if (c.type === 'wifi') tipoConexao = 'Wi-Fi';
-    else if (c.type && c.type !== 'unknown') tipoConexao = c.type;
-    else if (c.effectiveType) tipoConexao = c.effectiveType.toUpperCase();
+    const typeMap = { ethernet: 'Cabo', wifi: 'Wi-Fi', cellular: 'Celular', none: 'Sem conexão' };
+    tipoConexao = typeMap[c.type] || (c.effectiveType ? c.effectiveType.toUpperCase() : 'Não identificado');
   }
 
+  let dlMbps = 'N/A', ulMbps = 'N/A';
+
+  // --- DOWNLOAD: 2MB via Cloudflare ---
+  btn.textContent = '⏳ Testando download...';
   try {
-    // Download: ~10MB via Cloudflare
-    const dlUrl = `https://speed.cloudflare.com/__down?bytes=10000000&_=${Date.now()}`;
-    const dlStart = performance.now();
-    const dlRes = await fetch(dlUrl);
-    const dlBuffer = await dlRes.arrayBuffer();
-    const dlSecs = (performance.now() - dlStart) / 1000;
-    const dlMbps = ((dlBuffer.byteLength * 8) / dlSecs / 1e6).toFixed(2);
-
-    // Upload: ~2MB via Cloudflare
-    const ulPayload = new ArrayBuffer(2000000);
-    const ulStart = performance.now();
-    await fetch('https://speed.cloudflare.com/__up', {
-      method: 'POST',
-      body: ulPayload,
-      headers: { 'Content-Type': 'application/octet-stream' }
-    });
-    const ulSecs = (performance.now() - ulStart) / 1000;
-    const ulMbps = ((ulPayload.byteLength * 8) / ulSecs / 1e6).toFixed(2);
-
-    checkinSpeedData = { download: dlMbps, upload: ulMbps, tipo: tipoConexao };
-    document.getElementById('st-download').textContent = dlMbps;
-    document.getElementById('st-upload').textContent = ulMbps;
-    document.getElementById('st-tipo').textContent = tipoConexao;
-    btn.textContent = '✅ Teste Concluído';
-  } catch (err) {
-    checkinSpeedData = { download: 'Erro', upload: 'Erro', tipo: tipoConexao };
-    document.getElementById('st-download').textContent = 'Erro';
-    document.getElementById('st-upload').textContent = 'Erro';
-    document.getElementById('st-tipo').textContent = tipoConexao;
-    btn.textContent = '⚠️ Falha no Teste';
+    const DL_SIZE = 2000000;
+    const url = `https://speed.cloudflare.com/__down?bytes=${DL_SIZE}&nocache=${Date.now()}`;
+    const start = performance.now();
+    const resp = await fetch(url, { cache: 'no-store' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    await resp.blob();
+    const secs = (performance.now() - start) / 1000;
+    dlMbps = ((DL_SIZE * 8) / secs / 1e6).toFixed(2);
+  } catch (e) {
+    console.warn('Erro download test:', e);
+    dlMbps = 'Erro';
   }
 
+  // --- UPLOAD: 500KB via Apps Script (sem CORS) ---
+  btn.textContent = '⏳ Testando upload...';
+  try {
+    const UL_SIZE = 500000;
+    const fd = new FormData();
+    fd.append('action', 'speedtest_upload');
+    fd.append('payload', new Blob([new Uint8Array(UL_SIZE)], { type: 'application/octet-stream' }));
+    const start = performance.now();
+    const resp = await fetch(API_URL, { method: 'POST', body: fd, redirect: 'follow' });
+    await resp.json();
+    // Desconta ~600ms de overhead do Apps Script (instância quente)
+    const transferSecs = Math.max((performance.now() - start) / 1000 - 0.6, 0.05);
+    ulMbps = ((UL_SIZE * 8) / transferSecs / 1e6).toFixed(2);
+  } catch (e) {
+    console.warn('Erro upload test:', e);
+    ulMbps = 'Erro';
+  }
+
+  checkinSpeedData = { download: dlMbps, upload: ulMbps, tipo: tipoConexao };
+  document.getElementById('st-download').textContent = dlMbps;
+  document.getElementById('st-upload').textContent = ulMbps;
+  document.getElementById('st-tipo').textContent = tipoConexao;
   document.getElementById('st-results').style.display = 'block';
+  btn.textContent = '✅ Teste Concluído';
   btn.disabled = false;
 }
 

@@ -270,3 +270,18 @@ button:hover { background: #219150; }
   color: #3498db; font-weight: bold;
   margin-bottom: 14px; font-size: 0.88rem;
 }
+
+/* Assento com check-in feito */
+.seat.checkedin { background: #8e44ad; border-color: #8e44ad; color: #fff; cursor: not-allowed; }
+.legend .checkedin { background: #8e44ad; }
+
+/* Item check-in já realizado na lista */
+.checkin-res-item.done {
+  background: #f0f0f0; border-color: #ccc; cursor: default; opacity: 0.7;
+}
+.checkin-res-item.done:hover { background: #f0f0f0; border-color: #ccc; }
+.checkin-done-badge {
+  display: inline-block; background: #8e44ad; color: #fff;
+  font-size: 0.7rem; padding: 2px 7px; border-radius: 10px; margin-top: 4px;
+}
+
