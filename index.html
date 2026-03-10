@@ -39,7 +39,10 @@
                 <div class="leg-val" id="total-percent">Total: 0%</div>
             </div>
         </div>
-
+<!-- CHECK-IN BUTTON -->
+<div class="checkin-btn-wrap">
+  <button class="checkin-main-btn" onclick="openCheckinList()">✅ Fazer Check-in</button>
+</div>
         <!-- SELETOR DE DATA -->
         <div class="date-selector-container">
             <label>Data da Reserva:</label>
@@ -134,6 +137,40 @@
         </div>
     </div>
     <script src="script.js"></script>
+<!-- MODAL 1: Lista de Reservas do Dia -->
+<div id="checkin-list-modal" class="modal">
+  <div class="modal-content checkin-modal-content">
+    <span class="close" onclick="closeCheckinModal('checkin-list-modal')">&times;</span>
+    <h3 style="margin-bottom:4px;color:#2c3e50;">✅ Check-in</h3>
+    <p style="font-size:0.78rem;color:#7f8c8d;margin-bottom:16px;">Selecione sua reserva de hoje</p>
+    <div id="checkin-list-content"></div>
+  </div>
+</div>
+
+<!-- MODAL 2: Formulário de Check-in -->
+<div id="checkin-form-modal" class="modal">
+  <div class="modal-content checkin-modal-content">
+    <span class="close" onclick="closeCheckinModal('checkin-form-modal')">&times;</span>
+    <h3 style="margin-bottom:4px;color:#2c3e50;">Formulário de Check-in</h3>
+    <p id="checkin-form-detail" class="checkin-form-detail"></p>
+
+    <div id="checkin-items"></div>
+
+    <!-- Speed Test -->
+    <div class="speedtest-block">
+      <span class="st-title">🌐 Teste de Velocidade</span>
+      <span class="st-disclaimer">ℹ️ Para melhor performance, utilize conexão via cabo de rede. O resultado via Wi-Fi pode variar.</span>
+      <button type="button" id="speedtest-btn" class="st-run-btn" onclick="runCheckinSpeedTest()">🚀 Iniciar Teste</button>
+      <div id="st-results" class="st-results">
+        <p>📥 Download: <strong id="st-download">--</strong> Mbps</p>
+        <p>📤 Upload: <strong id="st-upload">--</strong> Mbps</p>
+        <p>🔌 Tipo de conexão: <strong id="st-tipo">--</strong></p>
+      </div>
+    </div>
+
+    <button type="button" id="checkin-submit-btn" onclick="submitCheckin()">✅ Confirmar Check-in</button>
+  </div>
+</div>
 </body>
 </html>
  

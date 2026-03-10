@@ -280,3 +280,200 @@ document.getElementById('reservation-form').addEventListener('submit', async (e)
     } catch(err) { alert('Erro conexão'); }
     finally { btn.textContent = 'Confirmar'; btn.disabled = false; }
 });
+
+// ===== CHECK-IN MODULE =====
+
+let checkinReservation = null;
+let checkinSpeedData = { download: null, upload: null, tipo: null };
+
+function openCheckinList() {
+  const today = new Date();
+  const todayStr = new Date(today.getTime() - today.getTimezoneOffset() * 60000)
+    .toISOString().split('T')[0];
+  const todayRes = allReservations.filter(r => r.data === todayStr);
+  const container = document.getElementById('checkin-list-content');
+
+  if (todayRes.length === 0) {
+    container.innerHTML = '<p style="color:#7f8c8d;text-align:center;padding:20px 0;">Nenhuma reserva encontrada para hoje.</p>';
+  } else {
+    const areas = {};
+    todayRes.forEach(r => {
+      if (!areas[r.local]) areas[r.local] = [];
+      areas[r.local].push(r);
+    });
+    let html = '';
+    Object.keys(areas).forEach(area => {
+      html += `<div style="margin-bottom:14px;"><span class="checkin-area-title">📍 ${area}</span>`;
+      areas[area].forEach(r => {
+        const rJson = encodeURIComponent(JSON.stringify(r));
+        html += `<div class="checkin-res-item" onclick="selectCheckin('${rJson}')">
+          <strong>${r.nome}</strong> — ${r.setor}
+          <small>Baia ${r.baia} · Assento ${r.assento}</small>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+    container.innerHTML = html;
+  }
+  document.getElementById('checkin-list-modal').style.display = 'block';
+}
+
+function selectCheckin(encodedRes) {
+  checkinReservation = JSON.parse(decodeURIComponent(encodedRes));
+  checkinSpeedData = { download: null, upload: null, tipo: null };
+
+  document.getElementById('checkin-form-detail').textContent =
+    `${checkinReservation.nome} · ${checkinReservation.setor} · ${checkinReservation.local} › Baia ${checkinReservation.baia} · Assento ${checkinReservation.assento}`;
+
+  const items = [
+    { key: 'cabo_rede',    label: '🔌 Cabo de Rede' },
+    { key: 'cabo_monitor', label: '🖥️ Cabo do Monitor' },
+    { key: 'cadeira',      label: '🪑 Cadeira' }
+  ];
+  let html = '';
+  items.forEach(item => {
+    html += `<div class="checkin-item-block">
+      <p>${item.label}</p>
+      <div class="status-options">
+        <label>
+          <input type="radio" name="${item.key}" value="Verde" onchange="toggleDefeito('${item.key}',false)">
+          <span class="status-badge badge-verde">✅ Funcionando</span>
+        </label>
+        <label>
+          <input type="radio" name="${item.key}" value="Vermelho" onchange="toggleDefeito('${item.key}',true)">
+          <span class="status-badge badge-vermelho">❌ Com Defeito</span>
+        </label>
+      </div>
+      <textarea id="defeito_${item.key}" class="defeito-field" placeholder="Descreva o defeito..."></textarea>
+    </div>`;
+  });
+  document.getElementById('checkin-items').innerHTML = html;
+
+  const stResults = document.getElementById('st-results');
+  stResults.style.display = 'none';
+  const stBtn = document.getElementById('speedtest-btn');
+  stBtn.textContent = '🚀 Iniciar Teste';
+  stBtn.disabled = false;
+
+  const submitBtn = document.getElementById('checkin-submit-btn');
+  submitBtn.textContent = '✅ Confirmar Check-in';
+  submitBtn.disabled = false;
+
+  closeCheckinModal('checkin-list-modal');
+  document.getElementById('checkin-form-modal').style.display = 'block';
+}
+
+function toggleDefeito(key, show) {
+  const el = document.getElementById('defeito_' + key);
+  el.style.display = show ? 'block' : 'none';
+  if (!show) el.value = '';
+}
+
+async function runCheckinSpeedTest() {
+  const btn = document.getElementById('speedtest-btn');
+  btn.textContent = '⏳ Testando...';
+  btn.disabled = true;
+
+  // Detectar tipo de conexão
+  let tipoConexao = 'Não identificado';
+  if (navigator.connection) {
+    const c = navigator.connection;
+    if (c.type === 'ethernet') tipoConexao = 'Cabo';
+    else if (c.type === 'wifi') tipoConexao = 'Wi-Fi';
+    else if (c.type && c.type !== 'unknown') tipoConexao = c.type;
+    else if (c.effectiveType) tipoConexao = c.effectiveType.toUpperCase();
+  }
+
+  try {
+    // Download: ~10MB via Cloudflare
+    const dlUrl = `https://speed.cloudflare.com/__down?bytes=10000000&_=${Date.now()}`;
+    const dlStart = performance.now();
+    const dlRes = await fetch(dlUrl);
+    const dlBuffer = await dlRes.arrayBuffer();
+    const dlSecs = (performance.now() - dlStart) / 1000;
+    const dlMbps = ((dlBuffer.byteLength * 8) / dlSecs / 1e6).toFixed(2);
+
+    // Upload: ~2MB via Cloudflare
+    const ulPayload = new ArrayBuffer(2000000);
+    const ulStart = performance.now();
+    await fetch('https://speed.cloudflare.com/__up', {
+      method: 'POST',
+      body: ulPayload,
+      headers: { 'Content-Type': 'application/octet-stream' }
+    });
+    const ulSecs = (performance.now() - ulStart) / 1000;
+    const ulMbps = ((ulPayload.byteLength * 8) / ulSecs / 1e6).toFixed(2);
+
+    checkinSpeedData = { download: dlMbps, upload: ulMbps, tipo: tipoConexao };
+    document.getElementById('st-download').textContent = dlMbps;
+    document.getElementById('st-upload').textContent = ulMbps;
+    document.getElementById('st-tipo').textContent = tipoConexao;
+    btn.textContent = '✅ Teste Concluído';
+  } catch (err) {
+    checkinSpeedData = { download: 'Erro', upload: 'Erro', tipo: tipoConexao };
+    document.getElementById('st-download').textContent = 'Erro';
+    document.getElementById('st-upload').textContent = 'Erro';
+    document.getElementById('st-tipo').textContent = tipoConexao;
+    btn.textContent = '⚠️ Falha no Teste';
+  }
+
+  document.getElementById('st-results').style.display = 'block';
+  btn.disabled = false;
+}
+
+async function submitCheckin() {
+  if (!checkinReservation) return;
+
+  const keys = ['cabo_rede', 'cabo_monitor', 'cadeira'];
+  for (const key of keys) {
+    if (!document.querySelector(`input[name="${key}"]:checked`)) {
+      alert('Por favor, preencha todos os itens de verificação antes de confirmar.');
+      return;
+    }
+  }
+
+  const params = new URLSearchParams();
+  params.append('action', 'checkin');
+  params.append('data',    checkinReservation.data);
+  params.append('nome',    checkinReservation.nome);
+  params.append('local',   checkinReservation.local);
+  params.append('baia',    checkinReservation.baia);
+  params.append('assento', checkinReservation.assento);
+
+  keys.forEach(key => {
+    const val = document.querySelector(`input[name="${key}"]:checked`).value;
+    const defeito = document.getElementById('defeito_' + key).value.trim();
+    params.append(key + '_status',  val);
+    params.append(key + '_defeito', val === 'Vermelho' ? defeito : '');
+  });
+
+  params.append('download',     checkinSpeedData.download || 'Não testado');
+  params.append('upload',       checkinSpeedData.upload   || 'Não testado');
+  params.append('conexao_tipo', checkinSpeedData.tipo     || 'Não testado');
+
+  const btn = document.getElementById('checkin-submit-btn');
+  btn.textContent = '⏳ Enviando...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(API_URL, { method: 'POST', body: params, redirect: 'follow' });
+    const json = await res.json();
+    if (json.success) {
+      alert('✅ Check-in registrado com sucesso!');
+      closeCheckinModal('checkin-form-modal');
+      fetchData();
+    } else {
+      alert('❌ Erro: ' + (json.message || json.error || 'Tente novamente.'));
+      btn.textContent = '✅ Confirmar Check-in';
+      btn.disabled = false;
+    }
+  } catch (err) {
+    alert('❌ Falha de conexão. Verifique a internet e tente novamente.');
+    btn.textContent = '✅ Confirmar Check-in';
+    btn.disabled = false;
+  }
+}
+
+function closeCheckinModal(id) {
+  document.getElementById(id).style.display = 'none';
+}
