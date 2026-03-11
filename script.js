@@ -197,33 +197,33 @@ function generateSeats() {
 }
 
 function updateSeatsStatus() {
-    const date = document.getElementById('reservation-date').value;
-    document.querySelectorAll('.seat').forEach(seat => {
-        const r = allReservations.find(res => 
-            res.data === date && 
-            String(res.local) === seat.dataset.loc && 
-            String(res.baia) === seat.dataset.row && 
-            String(res.assento) === seat.dataset.num
-        );
-        
-        const isSel = selectedSeat === seat;
-        seat.className = isSel ? 'seat selected' : 'seat available';
-        seat.title = 'Livre';
-        
-        if (r) {
-            seat.className = 'seat occupied';
-            seat.title = `${r.nome} (${r.setor})`;
-            if (isSel) {
-                closeModal();
-                alert(`Ocupado por ${r.nome}`);
-                selectedSeat = null;
-            }
-        }
-    });
+  const date = document.getElementById('reservation-date').value;
+  document.querySelectorAll('.seat').forEach(seat => {
+    const r = allReservations.find(res =>
+      res.data === date &&
+      String(res.local) === seat.dataset.loc &&
+      String(res.baia) === seat.dataset.row &&
+      String(res.assento) === seat.dataset.num
+    );
+    const isSel = selectedSeat === seat;
+    seat.className = isSel ? 'seat selected' : 'seat available';
+    seat.title = 'Livre';
+    if (r) {
+      if (r.checkin_ts) {
+        seat.className = 'seat checkedin';
+        seat.title = '✅ Check-in realizado: ' + r.nome + ' · ' + r.setor;
+      } else {
+        seat.className = 'seat occupied';
+        seat.title = r.nome + ' · ' + r.setor;
+      }
+      if (isSel) { closeModal(); alert('Ocupado por ' + r.nome); selectedSeat = null; }
+    }
+  });
 }
 
 function selectSeat(seat) {
-    if (seat.classList.contains('occupied')) return alert('Ocupado!');
+    if (seat.classList.contains('occupied') || seat.classList.contains('checkedin')) return alert('Ocupado!');
+
     if (selectedSeat) {
         selectedSeat.classList.remove('selected');
         selectedSeat.classList.add('available');
@@ -280,3 +280,252 @@ document.getElementById('reservation-form').addEventListener('submit', async (e)
     } catch(err) { alert('Erro conexão'); }
     finally { btn.textContent = 'Confirmar'; btn.disabled = false; }
 });
+
+// ===== CHECK-IN MODULE =====
+
+let checkinReservation = null;
+let checkinSpeedData = { download: null, upload: null, tipo: null };
+
+function openCheckinList() {
+  const today = new Date();
+  const todayStr = new Date(today.getTime() - today.getTimezoneOffset() * 60000)
+    .toISOString().split('T')[0];
+  const todayRes = allReservations.filter(r => r.data === todayStr);
+  const container = document.getElementById('checkin-list-content');
+
+  if (todayRes.length === 0) {
+    container.innerHTML = '<p style="color:#7f8c8d;text-align:center;padding:20px 0;">Nenhuma reserva encontrada para hoje.</p>';
+  } else {
+    const areas = {};
+    todayRes.forEach(r => {
+      if (!areas[r.local]) areas[r.local] = [];
+      areas[r.local].push(r);
+    });
+    let html = '';
+    Object.keys(areas).forEach(area => {
+      html += `<div style="margin-bottom:14px;"><span class="checkin-area-title">📍 ${area}</span>`;
+      areas[area].forEach(r => {
+        const done = !!r.checkin_ts;
+        const rJson = encodeURIComponent(JSON.stringify(r));
+        const clickHandler = done ? '' : `onclick="selectCheckin('${rJson}')"`;
+        html += `<div class="checkin-res-item${done ? ' done' : ''}" ${clickHandler}>
+          <strong>${r.nome}</strong> — ${r.setor}
+          <small>Baia ${r.baia} · Assento ${r.assento}</small>
+          ${done ? '<span class="checkin-done-badge">✅ Check-in já realizado</span>' : ''}
+        </div>`;
+      });
+      html += `</div>`;
+    });
+    container.innerHTML = html;
+  }
+  document.getElementById('checkin-list-modal').style.display = 'block';
+}
+
+function selectCheckin(encodedRes) {
+  checkinReservation = JSON.parse(decodeURIComponent(encodedRes));
+  checkinSpeedData = { download: null, upload: null, tipo: null };
+
+  document.getElementById('checkin-form-detail').textContent =
+    `${checkinReservation.nome} · ${checkinReservation.setor} · ${checkinReservation.local} › Baia ${checkinReservation.baia} · Assento ${checkinReservation.assento}`;
+
+  const items = [
+    { key: 'cabo_rede',    label: '🔌 Cabo de Rede' },
+    { key: 'cabo_monitor', label: '🖥️ Cabo do Monitor' },
+    { key: 'cadeira',      label: '🪑 Cadeira' }
+  ];
+  let html = '';
+  items.forEach(item => {
+    html += `<div class="checkin-item-block">
+      <p>${item.label}</p>
+      <div class="status-options">
+        <label>
+          <input type="radio" name="${item.key}" value="Verde" onchange="toggleDefeito('${item.key}',false)">
+          <span class="status-badge badge-verde">✅ Funcionando</span>
+        </label>
+        <label>
+          <input type="radio" name="${item.key}" value="Vermelho" onchange="toggleDefeito('${item.key}',true)">
+          <span class="status-badge badge-vermelho">❌ Com Defeito</span>
+        </label>
+      </div>
+      <textarea id="defeito_${item.key}" class="defeito-field" placeholder="Descreva o defeito..."></textarea>
+    </div>`;
+  });
+  document.getElementById('checkin-items').innerHTML = html;
+
+  const stResults = document.getElementById('st-results');
+  stResults.style.display = 'none';
+  const stBtn = document.getElementById('speedtest-btn');
+  stBtn.textContent = '🚀 Iniciar Teste';
+  stBtn.disabled = false;
+
+  const submitBtn = document.getElementById('checkin-submit-btn');
+  submitBtn.textContent = '✅ Confirmar Check-in';
+  submitBtn.disabled = false;
+
+  closeCheckinModal('checkin-list-modal');
+  document.getElementById('checkin-form-modal').style.display = 'block';
+}
+
+function toggleDefeito(key, show) {
+  const el = document.getElementById('defeito_' + key);
+  el.style.display = show ? 'block' : 'none';
+  if (!show) el.value = '';
+}
+
+async function detectConnectionType() {
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  if (navigator.connection) {
+    const c = navigator.connection;
+
+    if (isMobile) {
+      if (c.type === 'wifi')     return '📱 Celular · Wi-Fi';
+      if (c.type === 'cellular') return '📱 Celular · Dados móveis';
+      return '📱 Celular';
+    }
+
+    // Desktop com tipo explícito
+    if (c.type === 'ethernet') return '🖥️ Desktop · Cabo de Rede';
+    if (c.type === 'wifi')     return '💻 Desktop · Wi-Fi';
+
+    // Desktop com tipo desconhecido — usar RTT como heurística
+    // Cabo de rede tende a ter RTT ≤ 10ms; Wi-Fi costuma ser > 10ms
+    if (c.rtt !== undefined && c.rtt !== null) {
+      return c.rtt <= 10
+        ? '🖥️ Desktop · Cabo de Rede (estimado)'
+        : '💻 Desktop · Wi-Fi (estimado)';
+    }
+  }
+
+  return isMobile ? '📱 Celular' : '🖥️ Desktop (tipo não detectado)';
+}
+
+async function runCheckinSpeedTest() {
+  const btn = document.getElementById('speedtest-btn');
+  btn.disabled = true;
+
+  const tipoConexao = await detectConnectionType();
+
+  let dlMbps = 'N/A', ulMbps = 'N/A';
+
+  // --- DOWNLOAD: 4 streams paralelos × 5MB = 20MB ---
+  btn.textContent = '⏳ Testando download...';
+  try {
+    const STREAMS = 4, SIZE = 5000000;
+    const ts = Date.now();
+    const start = performance.now();
+    const blobs = await Promise.all(
+      Array.from({ length: STREAMS }, (_, i) =>
+        fetch(`https://speed.cloudflare.com/__down?bytes=${SIZE}&r=${ts}${i}`, { cache: 'no-store' })
+          .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+      )
+    );
+    const elapsed = (performance.now() - start) / 1000;
+    const totalBytes = blobs.reduce((sum, b) => sum + b.size, 0);
+    dlMbps = ((totalBytes * 8) / elapsed / 1e6).toFixed(2);
+  } catch (e) {
+    console.warn('Erro download:', e);
+    dlMbps = 'Erro';
+  }
+
+  // --- UPLOAD: 4 streams paralelos × 3MB = 12MB via Cloudflare ---
+  btn.textContent = '⏳ Testando upload...';
+  try {
+    const STREAMS = 4, SIZE = 3000000;
+    const payload = new Uint8Array(SIZE);
+    const ts = Date.now();
+    const start = performance.now();
+    await Promise.all(
+      Array.from({ length: STREAMS }, (_, i) =>
+        fetch(`https://speed.cloudflare.com/__up?r=${ts}${i}`, {
+          method: 'POST',
+          body: payload,
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/octet-stream' }
+        }).then(r => r.text())
+      )
+    );
+    const elapsed = (performance.now() - start) / 1000;
+    ulMbps = ((STREAMS * SIZE * 8) / elapsed / 1e6).toFixed(2);
+  } catch (e) {
+    console.warn('Upload Cloudflare falhou, usando fallback Apps Script:', e);
+    // Fallback: POST para o próprio Apps Script
+    try {
+      const SIZE_FB = 500000;
+      const fd = new FormData();
+      fd.append('action', 'speedtest_upload');
+      fd.append('payload', new Blob([new Uint8Array(SIZE_FB)]));
+      const start = performance.now();
+      await fetch(API_URL, { method: 'POST', body: fd, redirect: 'follow' });
+      const elapsed = Math.max((performance.now() - start) / 1000 - 0.8, 0.05);
+      ulMbps = ((SIZE_FB * 8) / elapsed / 1e6).toFixed(2) + ' (est.)';
+    } catch (e2) {
+      ulMbps = 'Erro';
+    }
+  }
+
+  checkinSpeedData = { download: dlMbps, upload: ulMbps, tipo: tipoConexao };
+  document.getElementById('st-download').textContent = dlMbps;
+  document.getElementById('st-upload').textContent = ulMbps;
+  document.getElementById('st-tipo').textContent = tipoConexao;
+  document.getElementById('st-results').style.display = 'block';
+  btn.textContent = '✅ Teste Concluído';
+  btn.disabled = false;
+}
+
+async function submitCheckin() {
+  if (!checkinReservation) return;
+
+  const keys = ['cabo_rede', 'cabo_monitor', 'cadeira'];
+  for (const key of keys) {
+    if (!document.querySelector(`input[name="${key}"]:checked`)) {
+      alert('Por favor, preencha todos os itens de verificação antes de confirmar.');
+      return;
+    }
+  }
+
+  const params = new URLSearchParams();
+  params.append('action', 'checkin');
+  params.append('data',    checkinReservation.data);
+  params.append('nome',    checkinReservation.nome);
+  params.append('local',   checkinReservation.local);
+  params.append('baia',    checkinReservation.baia);
+  params.append('assento', checkinReservation.assento);
+
+  keys.forEach(key => {
+    const val = document.querySelector(`input[name="${key}"]:checked`).value;
+    const defeito = document.getElementById('defeito_' + key).value.trim();
+    params.append(key + '_status',  val);
+    params.append(key + '_defeito', val === 'Vermelho' ? defeito : '');
+  });
+
+  params.append('download',     checkinSpeedData.download || 'Não testado');
+  params.append('upload',       checkinSpeedData.upload   || 'Não testado');
+  params.append('conexao_tipo', checkinSpeedData.tipo     || 'Não testado');
+
+  const btn = document.getElementById('checkin-submit-btn');
+  btn.textContent = '⏳ Enviando...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(API_URL, { method: 'POST', body: params, redirect: 'follow' });
+    const json = await res.json();
+    if (json.success) {
+      alert('✅ Check-in registrado com sucesso!');
+      closeCheckinModal('checkin-form-modal');
+      fetchData();
+    } else {
+      alert('❌ Erro: ' + (json.message || json.error || 'Tente novamente.'));
+      btn.textContent = '✅ Confirmar Check-in';
+      btn.disabled = false;
+    }
+  } catch (err) {
+    alert('❌ Falha de conexão. Verifique a internet e tente novamente.');
+    btn.textContent = '✅ Confirmar Check-in';
+    btn.disabled = false;
+  }
+}
+
+function closeCheckinModal(id) {
+  document.getElementById(id).style.display = 'none';
+}
