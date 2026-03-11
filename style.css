@@ -300,3 +300,73 @@ button:hover { background: #219150; }
   white-space: nowrap; border-left: 1px solid #ddd;
   user-select: none;
 }
+/* ===== LANDING PAGE ===== */
+#view-landing { padding: 10px 0 20px; }
+
+.landing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.landing-block {
+  background: #fff;
+  border: 2px solid #e1e4e8;
+  border-radius: 12px;
+  padding: 32px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.landing-block:hover {
+  border-color: #3498db;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(52,152,219,0.15);
+}
+
+.landing-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.landing-block h2 { font-size: 1rem; color: #2c3e50; margin-bottom: 6px; font-weight: 700; }
+.landing-block p { font-size: 0.78rem; color: #95a5a6; margin: 0; }
+
+/* ===== LOGIN / EMAIL BOX ===== */
+.login-box {
+  max-width: 380px;
+  margin: 24px auto;
+  background: #fff;
+  border: 1px solid #e1e4e8;
+  border-radius: 12px;
+  padding: 28px 24px;
+}
+
+.login-warning {
+  background: #fff8e1;
+  border-left: 4px solid #f39c12;
+  border-radius: 4px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.login-warning-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+.login-warning p { font-size: 0.82rem; color: #555; line-height: 1.5; margin: 0; }
+
+.btn-back {
+  background: #ecf0f1 !important;
+  color: #666 !important;
+  border: none !important;
+  margin-top: 4px !important;
+}
+.btn-back:hover { background: #dde1e4 !important; }
+
+/* ===== CHECK-IN EMAIL VIEW ===== */
+.checkin-email-header { text-align: center; margin-bottom: 20px; }
+.checkin-email-header h3 { color: #2c3e50; margin: 8px 0 4px; font-size: 1.2rem; }
+.checkin-email-header p { color: #7f8c8d; font-size: 0.85rem; margin: 0; }
+
+/* ===== CHECK-IN DONE VIEW ===== */
+.checkin-done-box { text-align: center; }
+.done-icon-big { font-size: 3.5rem; margin-bottom: 16px; }

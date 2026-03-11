@@ -9,115 +9,179 @@
 </head>
 <body>
     <div class="container">
-        <!-- HEADER BANNER -->
+
+        <!-- HEADER (sempre visível) -->
         <div class="header-area">
             <div class="logo-container">
-                <img src="./banner.png" alt="Reserva de Estações" class="site-logo" 
+                <img src="./banner.png" alt="Reserva de Estações" class="site-logo"
                      onerror="this.src='./logo.png'; this.onerror=function(){this.style.display='none'; document.querySelector('.logo-fallback').style.display='block';}">
                 <h1 class="logo-fallback" style="display:none; color:#2c3e50; margin-top:20px;">Reserva de Estações</h1>
             </div>
         </div>
 
-        <!-- PAINEL DE OCUPAÇÃO GERAL -->
-        <div class="occupancy-panel">
-            <h3>Taxa de Ocupação do Dia</h3>
-            <div class="progress-container">
-                <div class="progress-bar bar-aquario" id="prog-aquario" style="width: 0%">
-                    <span class="tooltip">Aquário: 0%</span>
+        <!-- ===== VIEW: LANDING ===== -->
+        <div id="view-landing">
+            <div class="landing-grid">
+                <div class="landing-block" onclick="showView('login')">
+                    <div class="landing-icon">📋</div>
+                    <h2>Reserva de Estação</h2>
+                    <p>Gerencie o mapa de assentos e reservas</p>
                 </div>
-                <div class="progress-bar bar-salao" id="prog-salao" style="width: 0%">
-                    <span class="tooltip">Salão: 0%</span>
+                <div class="landing-block" onclick="showView('checkin-email')">
+                    <div class="landing-icon">✅</div>
+                    <h2>Check-in</h2>
+                    <p>Confirme sua presença no escritório hoje</p>
                 </div>
-                <div class="progress-bar bar-gouvea" id="prog-gouvea" style="width: 0%">
-                    <span class="tooltip">Gouvêa: 0%</span>
+            </div>
+        </div>
+
+        <!-- ===== VIEW: LOGIN (gestores) ===== -->
+        <div id="view-login" style="display:none">
+            <div class="login-box">
+                <div class="login-warning">
+                    <span class="login-warning-icon">🔒</span>
+                    <p>Esta área é destinada <strong>exclusivamente a gestores de equipes</strong>. O acesso indevido é de responsabilidade do usuário.</p>
+                </div>
+                <label>Senha de acesso</label>
+                <input type="password" id="login-password" placeholder="Digite a senha"
+                       onkeydown="if(event.key==='Enter') doLogin()">
+                <button onclick="doLogin()">Acessar</button>
+                <button class="btn-back" onclick="showView('landing')">← Voltar</button>
+            </div>
+        </div>
+
+        <!-- ===== VIEW: CHECK-IN EMAIL (colaborador) ===== -->
+        <div id="view-checkin-email" style="display:none">
+            <div class="login-box">
+                <div class="checkin-email-header">
+                    <span style="font-size:2rem;">✅</span>
+                    <h3>Check-in</h3>
+                    <p>Digite seu e-mail para verificar sua reserva de hoje</p>
+                </div>
+                <label>E-mail corporativo</label>
+                <div class="email-input-wrap" style="margin-bottom:10px;">
+                    <input type="text" id="checkin-email-input" placeholder="seunome"
+                           autocomplete="username" autocapitalize="none"
+                           onkeydown="if(event.key==='Enter') verifyCheckinEmail()">
+                    <span class="email-domain">@primetour.com.br</span>
+                </div>
+                <button onclick="verifyCheckinEmail()">Verificar reserva</button>
+                <button class="btn-back" onclick="showView('landing')">← Voltar</button>
+            </div>
+        </div>
+
+        <!-- ===== VIEW: CHECK-IN CONCLUÍDO ===== -->
+        <div id="view-checkin-done" style="display:none">
+            <div class="login-box checkin-done-box">
+                <div class="done-icon-big">✅</div>
+                <h2 style="color:#27ae60;margin-bottom:8px;">Check-in realizado!</h2>
+                <p style="margin-bottom:6px;">Obrigado, <strong id="done-name"></strong>.</p>
+                <p style="color:#7f8c8d;margin-bottom:24px;">Bom trabalho hoje! 💪</p>
+                <button onclick="showView('landing')">← Voltar ao início</button>
+            </div>
+        </div>
+
+        <!-- ===== VIEW: APP (gestor logado) ===== -->
+        <div id="view-app" style="display:none">
+
+            <div style="margin-bottom:16px;">
+                <button class="btn-back" onclick="showView('landing')">← Página inicial</button>
+            </div>
+
+            <div class="occupancy-panel">
+                <h3>Taxa de Ocupação do Dia</h3>
+                <div class="progress-container">
+                    <div class="progress-bar bar-aquario" id="prog-aquario" style="width:0%">
+                        <span class="tooltip">Aquário: 0%</span>
+                    </div>
+                    <div class="progress-bar bar-salao" id="prog-salao" style="width:0%">
+                        <span class="tooltip">Salão: 0%</span>
+                    </div>
+                    <div class="progress-bar bar-gouvea" id="prog-gouvea" style="width:0%">
+                        <span class="tooltip">Gouvêa: 0%</span>
+                    </div>
+                </div>
+                <div class="progress-legend">
+                    <div class="leg-item"><span class="dot aquario"></span>Aquário</div>
+                    <div class="leg-item"><span class="dot salao"></span>Salão</div>
+                    <div class="leg-item"><span class="dot gouvea"></span>Gouvêa</div>
+                    <div class="leg-val" id="total-percent">Total: 0%</div>
                 </div>
             </div>
-            <div class="progress-legend">
-                <div class="leg-item"><span class="dot aquario"></span>Aquário</div>
-                <div class="leg-item"><span class="dot salao"></span>Salão</div>
-                <div class="leg-item"><span class="dot gouvea"></span>Gouvêa</div>
-                <div class="leg-val" id="total-percent">Total: 0%</div>
+
+            <div class="checkin-btn-wrap">
+                <button class="checkin-main-btn" onclick="openCheckinList()">✅ Fazer Check-in</button>
             </div>
-        </div>
-<!-- CHECK-IN BUTTON -->
-<div class="checkin-btn-wrap">
-  <button class="checkin-main-btn" onclick="openCheckinList()">✅ Fazer Check-in</button>
-</div>
-        <!-- SELETOR DE DATA -->
-        <div class="date-selector-container">
-            <label>Data da Reserva:</label>
-            <input type="date" id="reservation-date">
-            <p class="week-info" id="week-range-text">Carregando calendário...</p>
-        </div>
 
-        <!-- LEGENDA DO MAPA -->
-        <div class="instructions">
-    <div class="legend">
-        <span class="available">Livre</span>
-        <span class="occupied">Ocupado</span>
-        <span class="selected">Selecionado</span>
-        <span class="checkedin">✅ Check-in</span>
-    </div>
-</div>
-
-        <!-- ÁREAS / MAPA DE ASSENTOS -->
-        <div class="section">
-            <h2>Aquário - Atendimento a bancos</h2>
-<p class="section-subtitle">BTG, Centurion, Concierge e PTS</p>
-            <div class="seating-area">
-                <div class="row" data-location="Aquario" data-row="1"><div class="seats"></div></div>
-                <div class="row" data-location="Aquario" data-row="2"><div class="seats"></div></div>
-                <div class="row" data-location="Aquario" data-row="3"><div class="seats"></div></div>
-                <div class="row" data-location="Aquario" data-row="4"><div class="seats"></div></div>
+            <div class="date-selector-container">
+                <label>Data da Reserva:</label>
+                <input type="date" id="reservation-date">
+                <p class="week-info" id="week-range-text">Carregando calendário...</p>
             </div>
-        </div>
 
-        <div class="section">
-            <h2>Salão - Áreas operacionais</h2>
-<p class="section-subtitle">CEP, Eventos, Lazer, ICs, Supplier e Operadora</p>
-            <div class="seating-area">
-                <div class="row" data-location="Salao" data-row="1"><div class="seats"></div></div>
-                <div class="row" data-location="Salao" data-row="2"><div class="seats"></div></div>
-                <div class="row" data-location="Salao" data-row="3"><div class="seats"></div></div>
+            <div class="instructions">
+                <div class="legend">
+                    <span class="available">Livre</span>
+                    <span class="occupied">Ocupado</span>
+                    <span class="selected">Selecionado</span>
+                    <span class="checkedin">✅ Check-in</span>
+                </div>
             </div>
-        </div>
 
-        <div class="section">
-            <h2>Gouvêa - Áreas de suporte</h2>
-<p class="section-subtitle">C&P, Financeiro, MKT, Qualidade, Projetos e TI</p>
-            <div class="seating-area">
-                <div class="row" data-location="Gouvea" data-row="1"><div class="seats"></div></div>
-                <div class="row" data-location="Gouvea" data-row="2"><div class="seats"></div></div>
+            <div class="section">
+                <h2>Aquário - Atendimento a bancos</h2>
+                <p class="section-subtitle">BTG, Centurion, Concierge e PTS</p>
+                <div class="seating-area">
+                    <div class="row" data-location="Aquario" data-row="1"><div class="seats"></div></div>
+                    <div class="row" data-location="Aquario" data-row="2"><div class="seats"></div></div>
+                    <div class="row" data-location="Aquario" data-row="3"><div class="seats"></div></div>
+                    <div class="row" data-location="Aquario" data-row="4"><div class="seats"></div></div>
+                </div>
             </div>
-        </div>
 
-        <!-- --- NOVA POSIÇÃO DO DASHBOARD DE CARDS --- -->
-        
-        <div class="section-title-container">
-            <h3 class="dashboard-title">Reservas x Slots por setor</h3>
-            <hr class="title-divider">
-        </div>
+            <div class="section">
+                <h2>Salão - Áreas operacionais</h2>
+                <p class="section-subtitle">CEP, Eventos, Lazer, ICs, Supplier e Operadora</p>
+                <div class="seating-area">
+                    <div class="row" data-location="Salao" data-row="1"><div class="seats"></div></div>
+                    <div class="row" data-location="Salao" data-row="2"><div class="seats"></div></div>
+                    <div class="row" data-location="Salao" data-row="3"><div class="seats"></div></div>
+                </div>
+            </div>
 
-        <div id="dashboard-cards" class="dashboard-grid">
-            <p class="loading-text">Carregando dados da equipe...</p>
-        </div>
-        
-        <!-- ------------------------------------------ -->
+            <div class="section">
+                <h2>Gouvêa - Áreas de suporte</h2>
+                <p class="section-subtitle">C&P, Financeiro, MKT, Qualidade, Projetos e TI</p>
+                <div class="seating-area">
+                    <div class="row" data-location="Gouvea" data-row="1"><div class="seats"></div></div>
+                    <div class="row" data-location="Gouvea" data-row="2"><div class="seats"></div></div>
+                </div>
+            </div>
 
-<!-- QUADRO DE AVISOS -->
-        <div class="notice-board">
-            <h3>Regras de utilização e boas práticas</h3>
-            <ul>
-                <li>Reserve apenas o espaço que você realmente vai usar.</li>
-                <li>As reservas são pessoais e intransferíveis. Não reserve em nome de colegas.</li>
-                <li>As reservas abrem para a semana atual e a próxima. Organize sua agenda com antecedência para garantir o lugar.</li>
-                <li>Respeite os assentos destinados à sua área.</li>
-                <li>Se reservou assento e não vai comparecer, lembre-se de avisar o C&P para liberar o espaço em sistema.</li>
-            </ul>
-            <p class="notice-quote">"Cada assento ocupado é uma oportunidade de trabalho - para você ou um colega. Reserve com consciência!"</p>
-        </div>
+            <div class="section-title-container">
+                <h3 class="dashboard-title">Reservas x Slots por setor</h3>
+                <hr class="title-divider">
+            </div>
 
-        <!-- MODAL DE CONFIRMAÇÃO -->
+            <div id="dashboard-cards" class="dashboard-grid">
+                <p class="loading-text">Carregando dados da equipe...</p>
+            </div>
+
+            <div class="notice-board">
+                <h3>Regras de utilização e boas práticas</h3>
+                <ul>
+                    <li>Reserve apenas o espaço que você realmente vai usar.</li>
+                    <li>As reservas são pessoais e intransferíveis. Não reserve em nome de colegas.</li>
+                    <li>As reservas abrem para a semana atual e a próxima. Organize sua agenda com antecedência para garantir o lugar.</li>
+                    <li>Respeite os assentos destinados à sua área.</li>
+                    <li>Se reservou assento e não vai comparecer, lembre-se de avisar o C&P para liberar o espaço em sistema.</li>
+                </ul>
+                <p class="notice-quote">"Cada assento ocupado é uma oportunidade de trabalho - para você ou um colega. Reserve com consciência!"</p>
+            </div>
+
+        </div><!-- /view-app -->
+
+        <!-- MODAL RESERVA -->
         <div id="reservation-modal" class="modal">
             <div class="modal-content">
                 <span class="close">&times;</span>
@@ -125,67 +189,65 @@
                 <p class="modal-detail">Assento: <span id="selected-seat"></span></p>
                 <form id="reservation-form">
                     <label>E-mail corporativo</label>
-<div class="email-input-wrap">
-  <input type="text" id="full-name" required placeholder="seunome"
-         pattern="[a-zA-Z0-9._\-]+" title="Use apenas letras, números, ponto, hífen ou underscore"
-         autocomplete="username" autocapitalize="none">
-  <span class="email-domain">@primetour.com.br</span>
-</div>
-                    
+                    <div class="email-input-wrap">
+                        <input type="text" id="full-name" required placeholder="seunome"
+                               pattern="[a-zA-Z0-9._\-]+"
+                               title="Use apenas letras, números, ponto, hífen ou underscore"
+                               autocomplete="username" autocapitalize="none">
+                        <span class="email-domain">@primetour.com.br</span>
+                    </div>
                     <label>Setor</label>
                     <select id="department" required>
                         <option value="">Carregando...</option>
                     </select>
-                    
                     <button type="submit">Confirmar</button>
                 </form>
             </div>
         </div>
-    </div>
+
+    </div><!-- /container -->
+
     <script src="script.js"></script>
-<!-- MODAL 1: Lista de Reservas do Dia -->
-<div id="checkin-list-modal" class="modal">
-  <div class="modal-content checkin-modal-content">
-    <span class="close" onclick="closeCheckinModal('checkin-list-modal')">&times;</span>
-    <h3 style="margin-bottom:4px;color:#2c3e50;">✅ Check-in</h3>
-    <p style="font-size:0.78rem;color:#7f8c8d;margin-bottom:16px;">Selecione sua reserva de hoje</p>
-    <div id="checkin-list-content"></div>
-  </div>
-</div>
 
-<!-- MODAL 2: Formulário de Check-in -->
-<div id="checkin-form-modal" class="modal">
-  <div class="modal-content checkin-modal-content">
-    <span class="close" onclick="closeCheckinModal('checkin-form-modal')">&times;</span>
-    <h3 style="margin-bottom:4px;color:#2c3e50;">Formulário de Check-in</h3>
-    <p id="checkin-form-detail" class="checkin-form-detail"></p>
-
-    <div id="checkin-items"></div>
-
-    <!-- Speed Test -->
-    <div class="speedtest-block">
-      <span class="st-title">🌐 Teste de Velocidade</span>
-      <span class="st-disclaimer">ℹ️ Para melhor performance, utilize conexão via cabo de rede. O resultado via Wi-Fi pode variar.</span>
-      <button type="button" id="speedtest-btn" class="st-run-btn" onclick="runCheckinSpeedTest()">🚀 Iniciar Teste</button>
-     <div id="st-results" class="st-results">
-  <p>📥 Download: <strong id="st-download">--</strong> Mbps</p>
-  <p>📤 Upload: <strong id="st-upload">--</strong> Mbps</p>
-  <p style="margin-bottom:6px;">🔌 Tipo de conexão detectado: <strong id="st-tipo">--</strong></p>
-  <div id="st-conexao-wrap">
-    <label style="font-size:0.78rem;color:#555;font-weight:bold;display:block;margin-bottom:4px;">Confirme o tipo de conexão:</label>
-    <select id="st-conexao-selector" onchange="updateCheckinSpeedData()" style="font-size:0.82rem;padding:6px;width:100%;margin:0;border-radius:4px;border:1px solid #ddd;">
-      <option value="desktop-cabo">🖥️ Desktop · Cabo de Rede</option>
-      <option value="desktop-wifi">💻 Desktop · Wi-Fi</option>
-      <option value="celular-wifi">📱 Celular · Wi-Fi</option>
-      <option value="celular-dados">📱 Celular · Dados móveis</option>
-    </select>
-  </div>
-</div>
+    <!-- MODAL CHECK-IN: Lista -->
+    <div id="checkin-list-modal" class="modal">
+        <div class="modal-content checkin-modal-content">
+            <span class="close" onclick="closeCheckinModal('checkin-list-modal')">&times;</span>
+            <h3 style="margin-bottom:4px;color:#2c3e50;">✅ Check-in</h3>
+            <p style="font-size:0.78rem;color:#7f8c8d;margin-bottom:16px;">Selecione sua reserva de hoje</p>
+            <div id="checkin-list-content"></div>
+        </div>
     </div>
 
-    <button type="button" id="checkin-submit-btn" onclick="submitCheckin()">✅ Confirmar Check-in</button>
-  </div>
-</div>
+    <!-- MODAL CHECK-IN: Formulário -->
+    <div id="checkin-form-modal" class="modal">
+        <div class="modal-content checkin-modal-content">
+            <span class="close" onclick="closeCheckinModal('checkin-form-modal')">&times;</span>
+            <h3 style="margin-bottom:4px;color:#2c3e50;">Formulário de Check-in</h3>
+            <p id="checkin-form-detail" class="checkin-form-detail"></p>
+            <div id="checkin-items"></div>
+            <div class="speedtest-block">
+                <span class="st-title">🌐 Teste de Velocidade</span>
+                <span class="st-disclaimer">ℹ️ Para melhor performance, utilize conexão via cabo de rede. O resultado via Wi-Fi pode variar.</span>
+                <button type="button" id="speedtest-btn" class="st-run-btn" onclick="runCheckinSpeedTest()">🚀 Iniciar Teste</button>
+                <div id="st-results" class="st-results">
+                    <p>📥 Download: <strong id="st-download">--</strong> Mbps</p>
+                    <p>📤 Upload: <strong id="st-upload">--</strong> Mbps</p>
+                    <p style="margin-bottom:6px;">🔌 Tipo de conexão detectado: <strong id="st-tipo">--</strong></p>
+                    <div id="st-conexao-wrap">
+                        <label style="font-size:0.78rem;color:#555;font-weight:bold;display:block;margin-bottom:4px;">Confirme o tipo de conexão:</label>
+                        <select id="st-conexao-selector" onchange="updateCheckinSpeedData()" style="font-size:0.82rem;padding:6px;width:100%;margin:0;border-radius:4px;border:1px solid #ddd;">
+                            <option value="desktop-cabo">🖥️ Desktop · Cabo de Rede</option>
+                            <option value="desktop-wifi">💻 Desktop · Wi-Fi</option>
+                            <option value="celular-wifi">📱 Celular · Wi-Fi</option>
+                            <option value="celular-dados">📱 Celular · Dados móveis</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <button type="button" id="checkin-submit-btn" onclick="submitCheckin()">✅ Confirmar Check-in</button>
+        </div>
+    </div>
+
 </body>
 </html>
- 

@@ -24,6 +24,56 @@ let allReservations = [];
 let departmentRules = [];
 let selectedSeat = null;
 
+let checkinFromLanding = false;
+
+function showView(name) {
+  ['landing', 'login', 'app', 'checkin-email', 'checkin-done'].forEach(v => {
+    const el = document.getElementById('view-' + v);
+    if (el) el.style.display = 'none';
+  });
+  const el = document.getElementById('view-' + name);
+  if (el) el.style.display = 'block';
+  if (name !== 'login') { const p = document.getElementById('login-password'); if (p) p.value = ''; }
+  if (name !== 'checkin-email') { const e = document.getElementById('checkin-email-input'); if (e) e.value = ''; }
+}
+
+function doLogin() {
+  const pwd = document.getElementById('login-password').value;
+  if (pwd === 'Prime@2026') {
+    showView('app');
+  } else {
+    alert('Senha incorreta. Tente novamente.');
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-password').focus();
+  }
+}
+
+async function verifyCheckinEmail() {
+  const prefix = document.getElementById('checkin-email-input').value.trim().toLowerCase();
+  if (!prefix) { alert('Digite seu e-mail para continuar.'); return; }
+  const email = prefix + '@primetour.com.br';
+
+  const today = new Date();
+  const todayStr = new Date(today.getTime() - today.getTimezoneOffset() * 60000)
+    .toISOString().split('T')[0];
+
+  const reservation = allReservations.find(r =>
+    r.data === todayStr && r.nome.toLowerCase() === email
+  );
+
+  if (!reservation) {
+    alert('Nenhuma reserva encontrada para hoje com este e-mail.\n\nVerifique o e-mail digitado ou entre em contato com o C&P.');
+    return;
+  }
+  if (reservation.checkin_ts) {
+    alert('Check-in já realizado para esta reserva.');
+    return;
+  }
+
+  checkinFromLanding = true;
+  selectCheckin(encodeURIComponent(JSON.stringify(reservation)));
+}
+
 window.onload = function() {
     setupDateRestrictions();
     generateSeats();
@@ -243,7 +293,7 @@ function selectSeat(seat) {
     document.getElementById('reservation-modal').style.display = 'block';
 }
 
-document.querySelector('.close').addEventListener('click', closeModal);
+document.getElementById('reservation-modal').querySelector('.close').addEventListener('click', closeModal);
 function closeModal() {
     document.getElementById('reservation-modal').style.display = 'none';
     if(selectedSeat) {
@@ -559,10 +609,15 @@ async function submitCheckin() {
   try {
     const res = await fetch(API_URL, { method: 'POST', body: params, redirect: 'follow' });
     const json = await res.json();
-    if (json.success) {
-      alert('✅ Check-in registrado com sucesso!');
+        if (json.success) {
       closeCheckinModal('checkin-form-modal');
       fetchData();
+      if (checkinFromLanding) {
+        document.getElementById('done-name').textContent = checkinReservation.nome.split('@')[0];
+        showView('checkin-done');
+      } else {
+        alert('✅ Check-in registrado com sucesso!');
+      }
     } else {
       alert('❌ Erro: ' + (json.message || json.error || 'Tente novamente.'));
       btn.textContent = '✅ Confirmar Check-in';
