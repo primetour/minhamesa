@@ -197,33 +197,33 @@ function generateSeats() {
 }
 
 function updateSeatsStatus() {
-  const date = document.getElementById('reservation-date').value;
-  document.querySelectorAll('.seat').forEach(seat => {
-    const r = allReservations.find(res =>
-      res.data === date &&
-      String(res.local) === seat.dataset.loc &&
-      String(res.baia) === seat.dataset.row &&
-      String(res.assento) === seat.dataset.num
-    );
-    const isSel = selectedSeat === seat;
-    seat.className = isSel ? 'seat selected' : 'seat available';
-    seat.title = 'Livre';
-    if (r) {
-      if (r.checkin_ts) {
-        seat.className = 'seat checkedin';
-        seat.title = '✅ Check-in realizado: ' + r.nome + ' · ' + r.setor;
-      } else {
-        seat.className = 'seat occupied';
-        seat.title = r.nome + ' · ' + r.setor;
-      }
-      if (isSel) { closeModal(); alert('Ocupado por ' + r.nome); selectedSeat = null; }
-    }
-  });
+    const date = document.getElementById('reservation-date').value;
+    document.querySelectorAll('.seat').forEach(seat => {
+        const r = allReservations.find(res => 
+            res.data === date && 
+            String(res.local) === seat.dataset.loc && 
+            String(res.baia) === seat.dataset.row && 
+            String(res.assento) === seat.dataset.num
+        );
+        
+        const isSel = selectedSeat === seat;
+        seat.className = isSel ? 'seat selected' : 'seat available';
+        seat.title = 'Livre';
+        
+        if (r) {
+            seat.className = 'seat occupied';
+            seat.title = `${r.nome} (${r.setor})`;
+            if (isSel) {
+                closeModal();
+                alert(`Ocupado por ${r.nome}`);
+                selectedSeat = null;
+            }
+        }
+    });
 }
 
 function selectSeat(seat) {
-    if (seat.classList.contains('occupied') || seat.classList.contains('checkedin')) return alert('Ocupado!');
-
+    if (seat.classList.contains('occupied')) return alert('Ocupado!');
     if (selectedSeat) {
         selectedSeat.classList.remove('selected');
         selectedSeat.classList.add('available');
@@ -280,208 +280,3 @@ document.getElementById('reservation-form').addEventListener('submit', async (e)
     } catch(err) { alert('Erro conexão'); }
     finally { btn.textContent = 'Confirmar'; btn.disabled = false; }
 });
-
-// ===== CHECK-IN MODULE =====
-
-let checkinReservation = null;
-let checkinSpeedData = { download: null, upload: null, tipo: null };
-
-function openCheckinList() {
-  const today = new Date();
-  const todayStr = new Date(today.getTime() - today.getTimezoneOffset() * 60000)
-    .toISOString().split('T')[0];
-  const todayRes = allReservations.filter(r => r.data === todayStr);
-  const container = document.getElementById('checkin-list-content');
-
-  if (todayRes.length === 0) {
-    container.innerHTML = '<p style="color:#7f8c8d;text-align:center;padding:20px 0;">Nenhuma reserva encontrada para hoje.</p>';
-  } else {
-    const areas = {};
-    todayRes.forEach(r => {
-      if (!areas[r.local]) areas[r.local] = [];
-      areas[r.local].push(r);
-    });
-    let html = '';
-    Object.keys(areas).forEach(area => {
-      html += `<div style="margin-bottom:14px;"><span class="checkin-area-title">📍 ${area}</span>`;
-      areas[area].forEach(r => {
-        const done = !!r.checkin_ts;
-        const rJson = encodeURIComponent(JSON.stringify(r));
-        const clickHandler = done ? '' : `onclick="selectCheckin('${rJson}')"`;
-        html += `<div class="checkin-res-item${done ? ' done' : ''}" ${clickHandler}>
-          <strong>${r.nome}</strong> — ${r.setor}
-          <small>Baia ${r.baia} · Assento ${r.assento}</small>
-          ${done ? '<span class="checkin-done-badge">✅ Check-in já realizado</span>' : ''}
-        </div>`;
-      });
-      html += `</div>`;
-    });
-    container.innerHTML = html;
-  }
-  document.getElementById('checkin-list-modal').style.display = 'block';
-}
-
-function selectCheckin(encodedRes) {
-  checkinReservation = JSON.parse(decodeURIComponent(encodedRes));
-  checkinSpeedData = { download: null, upload: null, tipo: null };
-
-  document.getElementById('checkin-form-detail').textContent =
-    `${checkinReservation.nome} · ${checkinReservation.setor} · ${checkinReservation.local} › Baia ${checkinReservation.baia} · Assento ${checkinReservation.assento}`;
-
-  const items = [
-    { key: 'cabo_rede',    label: '🔌 Cabo de Rede' },
-    { key: 'cabo_monitor', label: '🖥️ Cabo do Monitor' },
-    { key: 'cadeira',      label: '🪑 Cadeira' }
-  ];
-  let html = '';
-  items.forEach(item => {
-    html += `<div class="checkin-item-block">
-      <p>${item.label}</p>
-      <div class="status-options">
-        <label>
-          <input type="radio" name="${item.key}" value="Verde" onchange="toggleDefeito('${item.key}',false)">
-          <span class="status-badge badge-verde">✅ Funcionando</span>
-        </label>
-        <label>
-          <input type="radio" name="${item.key}" value="Vermelho" onchange="toggleDefeito('${item.key}',true)">
-          <span class="status-badge badge-vermelho">❌ Com Defeito</span>
-        </label>
-      </div>
-      <textarea id="defeito_${item.key}" class="defeito-field" placeholder="Descreva o defeito..."></textarea>
-    </div>`;
-  });
-  document.getElementById('checkin-items').innerHTML = html;
-
-  const stResults = document.getElementById('st-results');
-  stResults.style.display = 'none';
-  const stBtn = document.getElementById('speedtest-btn');
-  stBtn.textContent = '🚀 Iniciar Teste';
-  stBtn.disabled = false;
-
-  const submitBtn = document.getElementById('checkin-submit-btn');
-  submitBtn.textContent = '✅ Confirmar Check-in';
-  submitBtn.disabled = false;
-
-  closeCheckinModal('checkin-list-modal');
-  document.getElementById('checkin-form-modal').style.display = 'block';
-}
-
-function toggleDefeito(key, show) {
-  const el = document.getElementById('defeito_' + key);
-  el.style.display = show ? 'block' : 'none';
-  if (!show) el.value = '';
-}
-
-async function runCheckinSpeedTest() {
-  const btn = document.getElementById('speedtest-btn');
-  btn.disabled = true;
-
-  // Detecção de tipo de conexão
-  let tipoConexao = 'Não identificado';
-  if (navigator.connection) {
-    const c = navigator.connection;
-    const typeMap = { ethernet: 'Cabo', wifi: 'Wi-Fi', cellular: 'Celular', none: 'Sem conexão' };
-    tipoConexao = typeMap[c.type] || (c.effectiveType ? c.effectiveType.toUpperCase() : 'Não identificado');
-  }
-
-  let dlMbps = 'N/A', ulMbps = 'N/A';
-
-  // --- DOWNLOAD: 2MB via Cloudflare ---
-  btn.textContent = '⏳ Testando download...';
-  try {
-    const DL_SIZE = 2000000;
-    const url = `https://speed.cloudflare.com/__down?bytes=${DL_SIZE}&nocache=${Date.now()}`;
-    const start = performance.now();
-    const resp = await fetch(url, { cache: 'no-store' });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    await resp.blob();
-    const secs = (performance.now() - start) / 1000;
-    dlMbps = ((DL_SIZE * 8) / secs / 1e6).toFixed(2);
-  } catch (e) {
-    console.warn('Erro download test:', e);
-    dlMbps = 'Erro';
-  }
-
-  // --- UPLOAD: 500KB via Apps Script (sem CORS) ---
-  btn.textContent = '⏳ Testando upload...';
-  try {
-    const UL_SIZE = 500000;
-    const fd = new FormData();
-    fd.append('action', 'speedtest_upload');
-    fd.append('payload', new Blob([new Uint8Array(UL_SIZE)], { type: 'application/octet-stream' }));
-    const start = performance.now();
-    const resp = await fetch(API_URL, { method: 'POST', body: fd, redirect: 'follow' });
-    await resp.json();
-    // Desconta ~600ms de overhead do Apps Script (instância quente)
-    const transferSecs = Math.max((performance.now() - start) / 1000 - 0.6, 0.05);
-    ulMbps = ((UL_SIZE * 8) / transferSecs / 1e6).toFixed(2);
-  } catch (e) {
-    console.warn('Erro upload test:', e);
-    ulMbps = 'Erro';
-  }
-
-  checkinSpeedData = { download: dlMbps, upload: ulMbps, tipo: tipoConexao };
-  document.getElementById('st-download').textContent = dlMbps;
-  document.getElementById('st-upload').textContent = ulMbps;
-  document.getElementById('st-tipo').textContent = tipoConexao;
-  document.getElementById('st-results').style.display = 'block';
-  btn.textContent = '✅ Teste Concluído';
-  btn.disabled = false;
-}
-
-async function submitCheckin() {
-  if (!checkinReservation) return;
-
-  const keys = ['cabo_rede', 'cabo_monitor', 'cadeira'];
-  for (const key of keys) {
-    if (!document.querySelector(`input[name="${key}"]:checked`)) {
-      alert('Por favor, preencha todos os itens de verificação antes de confirmar.');
-      return;
-    }
-  }
-
-  const params = new URLSearchParams();
-  params.append('action', 'checkin');
-  params.append('data',    checkinReservation.data);
-  params.append('nome',    checkinReservation.nome);
-  params.append('local',   checkinReservation.local);
-  params.append('baia',    checkinReservation.baia);
-  params.append('assento', checkinReservation.assento);
-
-  keys.forEach(key => {
-    const val = document.querySelector(`input[name="${key}"]:checked`).value;
-    const defeito = document.getElementById('defeito_' + key).value.trim();
-    params.append(key + '_status',  val);
-    params.append(key + '_defeito', val === 'Vermelho' ? defeito : '');
-  });
-
-  params.append('download',     checkinSpeedData.download || 'Não testado');
-  params.append('upload',       checkinSpeedData.upload   || 'Não testado');
-  params.append('conexao_tipo', checkinSpeedData.tipo     || 'Não testado');
-
-  const btn = document.getElementById('checkin-submit-btn');
-  btn.textContent = '⏳ Enviando...';
-  btn.disabled = true;
-
-  try {
-    const res = await fetch(API_URL, { method: 'POST', body: params, redirect: 'follow' });
-    const json = await res.json();
-    if (json.success) {
-      alert('✅ Check-in registrado com sucesso!');
-      closeCheckinModal('checkin-form-modal');
-      fetchData();
-    } else {
-      alert('❌ Erro: ' + (json.message || json.error || 'Tente novamente.'));
-      btn.textContent = '✅ Confirmar Check-in';
-      btn.disabled = false;
-    }
-  } catch (err) {
-    alert('❌ Falha de conexão. Verifique a internet e tente novamente.');
-    btn.textContent = '✅ Confirmar Check-in';
-    btn.disabled = false;
-  }
-}
-
-function closeCheckinModal(id) {
-  document.getElementById(id).style.display = 'none';
-}
