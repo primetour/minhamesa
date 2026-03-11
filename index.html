@@ -51,25 +51,28 @@
         </div>
 
         <!-- ===== VIEW: CHECK-IN EMAIL (colaborador) ===== -->
-        <div id="view-checkin-email" style="display:none">
-            <div class="login-box">
-                <div class="checkin-email-header">
-                    <span style="font-size:2rem;">✅</span>
-                    <h3>Check-in</h3>
-                    <p>Digite seu e-mail para verificar sua reserva de hoje</p>
-                </div>
-                <label>E-mail corporativo</label>
-<div class="email-input-wrap" style="margin-bottom:10px;">
-    <input type="text" id="checkin-email-input" placeholder="seunome"
-           autocomplete="username" autocapitalize="none"
-           onkeydown="if(event.key==='Enter') verifyCheckinEmail()">
-    <select id="email-domain-checkin" class="email-domain-select">
-        <option value="@primetour.com.br">@primetour.com.br</option>
-        <option value="@primetour.operator.com.br">@primetour.operator.com.br</option>
-        <option value="@primetravel.tur.br">@primetravel.tur.br</option>
-    </select>
-</div>
+<div id="view-checkin-email" style="display:none">
+    <div class="login-box">
+        <div class="checkin-email-header">
+            <span style="font-size:2rem;">✅</span>
+            <h3>Check-in</h3>
+            <p>Digite seu e-mail para verificar sua reserva de hoje</p>
         </div>
+        <label for="checkin-email-input">E-mail corporativo</label>
+        <div class="email-input-wrap" style="margin-bottom:10px;">
+            <input type="text" id="checkin-email-input" placeholder="seunome"
+                   autocomplete="username" autocapitalize="none"
+                   onkeydown="if(event.key==='Enter') verifyCheckinEmail()">
+            <select id="email-domain-checkin" class="email-domain-select">
+                <option value="@primetour.com.br">@primetour.com.br</option>
+                <option value="@primetour.operator.com.br">@primetour.operator.com.br</option>
+                <option value="@primetravel.tur.br">@primetravel.tur.br</option>
+            </select>
+        </div>
+        <button onclick="verifyCheckinEmail()">Verificar reserva</button>
+        <button class="btn-back" onclick="showView('landing')">← Voltar</button>
+    </div>
+</div>
 
         <!-- ===== VIEW: CHECK-IN CONCLUÍDO ===== -->
         <div id="view-checkin-done" style="display:none">
