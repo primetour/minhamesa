@@ -517,6 +517,7 @@ async function runCheckinSpeedTest() {
   checkinSpeedData = { download: dlMbps, upload: ulMbps, tipo: tipoLabels[tipoKey] };
   updateCheckinSpeedData();
 
+  document.getElementById('st-results').style.display = 'block';  // ← linha que faltava
   btn.textContent = '✅ Teste Concluído';
   btn.disabled = false;
 }
