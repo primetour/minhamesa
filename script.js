@@ -51,7 +51,8 @@ function doLogin() {
 async function verifyCheckinEmail() {
   const prefix = document.getElementById('checkin-email-input').value.trim().toLowerCase();
   if (!prefix) { alert('Digite seu e-mail para continuar.'); return; }
-  const email = prefix + '@primetour.com.br';
+  const domain = document.getElementById('email-domain-checkin').value;
+const email = prefix + domain;
 
   const today = new Date();
   const todayStr = new Date(today.getTime() - today.getTimezoneOffset() * 60000)
@@ -289,7 +290,7 @@ function selectSeat(seat) {
         sel.innerHTML += `<option value="${r.area}">${r.area}</option>`;
     });
     
-    document.getElementById('selected-seat').textContent = `${seat.dataset.loc} - Baia ${seat.dataset.row} - ${seat.dataset.num}`;
+    document.getElementById('selected-seat').textContent = `${seat.dataset.loc} - Fileira ${seat.dataset.row} - Posição ${seat.dataset.num}`;
     document.getElementById('reservation-modal').style.display = 'block';
 }
 
@@ -312,7 +313,8 @@ document.getElementById('reservation-form').addEventListener('submit', async (e)
     
     const fd = new FormData();
     fd.append('data', document.getElementById('reservation-date').value);
-    fd.append('nome', document.getElementById('full-name').value.trim().toLowerCase() + '@primetour.com.br');
+    const domain = document.getElementById('email-domain-reserva').value;
+    fd.append('nome', document.getElementById('full-name').value.trim().toLowerCase() + domain);
     fd.append('setor', document.getElementById('department').value);
     fd.append('local', selectedSeat.dataset.loc);
     fd.append('baia', selectedSeat.dataset.row);
@@ -360,7 +362,7 @@ function openCheckinList() {
         const clickHandler = done ? '' : `onclick="selectCheckin('${rJson}')"`;
         html += `<div class="checkin-res-item${done ? ' done' : ''}" ${clickHandler}>
           <strong>${r.nome}</strong> — ${r.setor}
-          <small>Baia ${r.baia} · Assento ${r.assento}</small>
+          <small>Fileira ${r.baia} · Posição ${r.assento}</small>
           ${done ? '<span class="checkin-done-badge">✅ Check-in já realizado</span>' : ''}
         </div>`;
       });
@@ -376,7 +378,7 @@ function selectCheckin(encodedRes) {
   checkinSpeedData = { download: null, upload: null, tipo: null };
 
   document.getElementById('checkin-form-detail').textContent =
-    `${checkinReservation.nome} · ${checkinReservation.setor} · ${checkinReservation.local} › Baia ${checkinReservation.baia} · Assento ${checkinReservation.assento}`;
+    `${checkinReservation.nome} · ${checkinReservation.setor} · ${checkinReservation.local} › Fileira ${checkinReservation.baia} · Posição ${checkinReservation.assento}`;
 
   const items = [
     { key: 'cabo_rede',    label: '🔌 Cabo de Rede' },

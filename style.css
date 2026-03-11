@@ -294,12 +294,22 @@ button:hover { background: #219150; }
   flex: 1; min-width: 0;
 }
 .email-input-wrap input:focus { outline: none; box-shadow: none; }
-.email-domain {
-  background: #f4f6f8; color: #7f8c8d;
-  padding: 10px 10px; font-size: 0.88rem;
-  white-space: nowrap; border-left: 1px solid #ddd;
-  user-select: none;
+.email-domain-select {
+  background: #f4f6f8;
+  color: #7f8c8d;
+  font-size: 0.82rem;
+  border: none;
+  border-left: 1px solid #ddd;
+  border-radius: 0;
+  padding: 10px 8px;
+  cursor: pointer;
+  outline: none;
+  width: auto !important;
+  margin: 0 !important;
+  flex-shrink: 0;
 }
+.email-domain-select:focus { background: #eaf1fb; color: #2c3e50; }
+
 /* ===== LANDING PAGE ===== */
 #view-landing { padding: 10px 0 20px; }
 

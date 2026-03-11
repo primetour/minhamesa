@@ -59,15 +59,16 @@
                     <p>Digite seu e-mail para verificar sua reserva de hoje</p>
                 </div>
                 <label>E-mail corporativo</label>
-                <div class="email-input-wrap" style="margin-bottom:10px;">
-                    <input type="text" id="checkin-email-input" placeholder="seunome"
-                           autocomplete="username" autocapitalize="none"
-                           onkeydown="if(event.key==='Enter') verifyCheckinEmail()">
-                    <span class="email-domain">@primetour.com.br</span>
-                </div>
-                <button onclick="verifyCheckinEmail()">Verificar reserva</button>
-                <button class="btn-back" onclick="showView('landing')">← Voltar</button>
-            </div>
+<div class="email-input-wrap" style="margin-bottom:10px;">
+    <input type="text" id="checkin-email-input" placeholder="seunome"
+           autocomplete="username" autocapitalize="none"
+           onkeydown="if(event.key==='Enter') verifyCheckinEmail()">
+    <select id="email-domain-checkin" class="email-domain-select">
+        <option value="@primetour.com.br">@primetour.com.br</option>
+        <option value="@primetour.operator.com.br">@primetour.operator.com.br</option>
+        <option value="@primetravel.tur.br">@primetravel.tur.br</option>
+    </select>
+</div>
         </div>
 
         <!-- ===== VIEW: CHECK-IN CONCLUÍDO ===== -->
@@ -189,13 +190,17 @@
                 <p class="modal-detail">Assento: <span id="selected-seat"></span></p>
                 <form id="reservation-form">
                     <label>E-mail corporativo</label>
-                    <div class="email-input-wrap">
-                        <input type="text" id="full-name" required placeholder="seunome"
-                               pattern="[a-zA-Z0-9._\-]+"
-                               title="Use apenas letras, números, ponto, hífen ou underscore"
-                               autocomplete="username" autocapitalize="none">
-                        <span class="email-domain">@primetour.com.br</span>
-                    </div>
+<div class="email-input-wrap">
+    <input type="text" id="full-name" required placeholder="seunome"
+           pattern="[a-zA-Z0-9._\-]+"
+           title="Use apenas letras, números, ponto, hífen ou underscore"
+           autocomplete="username" autocapitalize="none">
+    <select id="email-domain-reserva" class="email-domain-select">
+        <option value="@primetour.com.br">@primetour.com.br</option>
+        <option value="@primetour.operator.com.br">@primetour.operator.com.br</option>
+        <option value="@primetravel.tur.br">@primetravel.tur.br</option>
+    </select>
+</div>
                     <label>Setor</label>
                     <select id="department" required>
                         <option value="">Carregando...</option>
