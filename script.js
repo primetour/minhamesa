@@ -389,43 +389,42 @@ function measureUploadXHR(url, sizeBytes) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const data = new Uint8Array(sizeBytes);
-    let warmupDone = false, warmupEnd = null;
-    let lastLoaded = 0, lastTime = null;
+    const startTime = performance.now();
+    let firstProgressAt = null, lastLoaded = 0, lastTime = null;
     const samples = [];
 
     xhr.upload.onprogress = (e) => {
       const now = performance.now();
-      // Ignora primeiros 300ms (TCP slow start)
-      if (!warmupDone) {
-        if (!warmupEnd) warmupEnd = now + 300;
-        if (now < warmupEnd) { lastLoaded = e.loaded; lastTime = now; return; }
-        warmupDone = true; lastLoaded = e.loaded; lastTime = now; return;
+      if (firstProgressAt === null) {
+        firstProgressAt = now; lastLoaded = e.loaded; lastTime = now; return;
       }
       const dt = (now - lastTime) / 1000;
-      if (dt >= 0.05) {
+      if (dt >= 0.05 && e.loaded > lastLoaded) {
         samples.push((e.loaded - lastLoaded) / dt);
-        lastLoaded = e.loaded;
-        lastTime = now;
+        lastLoaded = e.loaded; lastTime = now;
       }
     };
 
     xhr.upload.onloadend = () => {
-      if (samples.length >= 2) {
+      if (samples.length >= 1) {
         const sorted = [...samples].sort((a, b) => b - a);
         const top = sorted.slice(0, Math.ceil(sorted.length * 0.7));
         const avg = top.reduce((a, b) => a + b) / top.length;
         resolve((avg * 8 / 1e6).toFixed(2));
-      } else if (samples.length === 1) {
-        resolve((samples[0] * 8 / 1e6).toFixed(2));
+      } else if (firstProgressAt !== null) {
+        // Conexão muito rápida: sem amostras intermediárias, usa tempo total do upload
+        const elapsed = Math.max((performance.now() - firstProgressAt) / 1000, 0.01);
+        resolve((sizeBytes * 8 / elapsed / 1e6).toFixed(2));
       } else {
-        reject(new Error('Sem amostras de upload'));
+        reject(new Error('Sem dados de upload'));
       }
     };
 
-    xhr.onerror   = () => reject(new Error('Erro XHR upload'));
-    xhr.ontimeout = () => reject(new Error('Timeout upload'));
+    xhr.onerror   = () => reject(new Error('Erro XHR'));
+    xhr.ontimeout = () => reject(new Error('Timeout'));
     xhr.timeout   = 30000;
 
+    // FormData = multipart/form-data = "simple" content-type = sem CORS preflight
     const fd = new FormData();
     fd.append('action', 'speedtest_upload');
     fd.append('payload', new Blob([data], { type: 'application/octet-stream' }));
@@ -451,7 +450,7 @@ async function runCheckinSpeedTest() {
 
   let dlMbps = 'N/A', ulMbps = 'N/A';
 
-  // --- DOWNLOAD: 6 streams × 5MB = 30MB ---
+  // --- DOWNLOAD: 6 streams × 5MB ---
   btn.textContent = '⏳ Testando download...';
   try {
     const STREAMS = 6, SIZE = 5000000, ts = Date.now();
@@ -469,13 +468,34 @@ async function runCheckinSpeedTest() {
     dlMbps = 'Erro';
   }
 
-  // --- UPLOAD: XHR progress (independente da latência do servidor) ---
+  // --- UPLOAD: Cloudflare no-cors (sem preflight, latência mínima) ---
   btn.textContent = '⏳ Testando upload...';
   try {
-    ulMbps = await measureUploadXHR(API_URL, 5000000); // 5MB
+    // no-cors = sem bloqueio CORS, FormData = content-type simples permitido
+    const STREAMS = 4, SIZE = 8000000, ts = Date.now(); // 4 × 8MB = 32MB
+    const start = performance.now();
+    await Promise.all(
+      Array.from({ length: STREAMS }, (_, i) => {
+        const fd = new FormData();
+        fd.append('d', new Blob([new Uint8Array(SIZE)]));
+        return fetch(`https://speed.cloudflare.com/__up?r=${ts}${i}`, {
+          method: 'POST',
+          body: fd,
+          mode: 'no-cors',
+          cache: 'no-store'
+        });
+      })
+    );
+    const elapsed = (performance.now() - start) / 1000;
+    ulMbps = ((STREAMS * SIZE * 8) / elapsed / 1e6).toFixed(2);
   } catch (e) {
-    console.warn('Erro upload:', e);
-    ulMbps = 'Erro';
+    // Fallback: Apps Script com XHR corrigido
+    console.warn('Cloudflare upload falhou, usando fallback:', e);
+    try {
+      ulMbps = await measureUploadXHR(API_URL, 3000000);
+    } catch (e2) {
+      ulMbps = 'Erro';
+    }
   }
 
   // --- TIPO DE CONEXÃO ---
@@ -491,13 +511,9 @@ async function runCheckinSpeedTest() {
   document.getElementById('st-upload').textContent = ulMbps;
   document.getElementById('st-tipo').textContent = tipoLabels[tipoKey] || tipoKey;
 
-  // Pre-seleciona o seletor com o valor detectado
   const sel = document.getElementById('st-conexao-selector');
   if (sel) sel.value = tipoKey;
 
-  document.getElementById('st-results').style.display = 'block';
-
-  // Atualiza checkinSpeedData com o tipo selecionado
   checkinSpeedData = { download: dlMbps, upload: ulMbps, tipo: tipoLabels[tipoKey] };
   updateCheckinSpeedData();
 
