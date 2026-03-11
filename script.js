@@ -374,45 +374,87 @@ function toggleDefeito(key, show) {
 
 async function detectConnectionType() {
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-  if (navigator.connection) {
-    const c = navigator.connection;
-
-    if (isMobile) {
-      if (c.type === 'wifi')     return '📱 Celular · Wi-Fi';
-      if (c.type === 'cellular') return '📱 Celular · Dados móveis';
-      return '📱 Celular';
-    }
-
-    // Desktop com tipo explícito
-    if (c.type === 'ethernet') return '🖥️ Desktop · Cabo de Rede';
-    if (c.type === 'wifi')     return '💻 Desktop · Wi-Fi';
-
-    // Desktop com tipo desconhecido — usar RTT como heurística
-    // Cabo de rede tende a ter RTT ≤ 10ms; Wi-Fi costuma ser > 10ms
-    if (c.rtt !== undefined && c.rtt !== null) {
-      return c.rtt <= 10
-        ? '🖥️ Desktop · Cabo de Rede (estimado)'
-        : '💻 Desktop · Wi-Fi (estimado)';
-    }
+  if (isMobile) {
+    if (navigator.connection && navigator.connection.type === 'cellular') return 'celular-dados';
+    return 'celular-wifi';
   }
+  // Desktop: tenta tipo explícito primeiro
+  if (navigator.connection && navigator.connection.type === 'ethernet') return 'desktop-cabo';
+  if (navigator.connection && navigator.connection.type === 'wifi')     return 'desktop-wifi';
+  // Fallback padrão desktop — usuário vai confirmar no seletor
+  return 'desktop-cabo';
+}
 
-  return isMobile ? '📱 Celular' : '🖥️ Desktop (tipo não detectado)';
+function measureUploadXHR(url, sizeBytes) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const data = new Uint8Array(sizeBytes);
+    let warmupDone = false, warmupEnd = null;
+    let lastLoaded = 0, lastTime = null;
+    const samples = [];
+
+    xhr.upload.onprogress = (e) => {
+      const now = performance.now();
+      // Ignora primeiros 300ms (TCP slow start)
+      if (!warmupDone) {
+        if (!warmupEnd) warmupEnd = now + 300;
+        if (now < warmupEnd) { lastLoaded = e.loaded; lastTime = now; return; }
+        warmupDone = true; lastLoaded = e.loaded; lastTime = now; return;
+      }
+      const dt = (now - lastTime) / 1000;
+      if (dt >= 0.05) {
+        samples.push((e.loaded - lastLoaded) / dt);
+        lastLoaded = e.loaded;
+        lastTime = now;
+      }
+    };
+
+    xhr.upload.onloadend = () => {
+      if (samples.length >= 2) {
+        const sorted = [...samples].sort((a, b) => b - a);
+        const top = sorted.slice(0, Math.ceil(sorted.length * 0.7));
+        const avg = top.reduce((a, b) => a + b) / top.length;
+        resolve((avg * 8 / 1e6).toFixed(2));
+      } else if (samples.length === 1) {
+        resolve((samples[0] * 8 / 1e6).toFixed(2));
+      } else {
+        reject(new Error('Sem amostras de upload'));
+      }
+    };
+
+    xhr.onerror   = () => reject(new Error('Erro XHR upload'));
+    xhr.ontimeout = () => reject(new Error('Timeout upload'));
+    xhr.timeout   = 30000;
+
+    const fd = new FormData();
+    fd.append('action', 'speedtest_upload');
+    fd.append('payload', new Blob([data], { type: 'application/octet-stream' }));
+    xhr.open('POST', url);
+    xhr.send(fd);
+  });
+}
+
+function updateCheckinSpeedData() {
+  const tipoMap = {
+    'desktop-cabo':  '🖥️ Desktop · Cabo de Rede',
+    'desktop-wifi':  '💻 Desktop · Wi-Fi',
+    'celular-wifi':  '📱 Celular · Wi-Fi',
+    'celular-dados': '📱 Celular · Dados móveis'
+  };
+  const sel = document.getElementById('st-conexao-selector');
+  if (sel) checkinSpeedData.tipo = tipoMap[sel.value] || sel.value;
 }
 
 async function runCheckinSpeedTest() {
   const btn = document.getElementById('speedtest-btn');
   btn.disabled = true;
 
-  const tipoConexao = await detectConnectionType();
-
   let dlMbps = 'N/A', ulMbps = 'N/A';
 
-  // --- DOWNLOAD: 4 streams paralelos × 5MB = 20MB ---
+  // --- DOWNLOAD: 6 streams × 5MB = 30MB ---
   btn.textContent = '⏳ Testando download...';
   try {
-    const STREAMS = 4, SIZE = 5000000;
-    const ts = Date.now();
+    const STREAMS = 6, SIZE = 5000000, ts = Date.now();
     const start = performance.now();
     const blobs = await Promise.all(
       Array.from({ length: STREAMS }, (_, i) =>
@@ -421,54 +463,44 @@ async function runCheckinSpeedTest() {
       )
     );
     const elapsed = (performance.now() - start) / 1000;
-    const totalBytes = blobs.reduce((sum, b) => sum + b.size, 0);
-    dlMbps = ((totalBytes * 8) / elapsed / 1e6).toFixed(2);
+    dlMbps = ((blobs.reduce((s, b) => s + b.size, 0) * 8) / elapsed / 1e6).toFixed(2);
   } catch (e) {
     console.warn('Erro download:', e);
     dlMbps = 'Erro';
   }
 
-  // --- UPLOAD: 4 streams paralelos × 3MB = 12MB via Cloudflare ---
+  // --- UPLOAD: XHR progress (independente da latência do servidor) ---
   btn.textContent = '⏳ Testando upload...';
   try {
-    const STREAMS = 4, SIZE = 3000000;
-    const payload = new Uint8Array(SIZE);
-    const ts = Date.now();
-    const start = performance.now();
-    await Promise.all(
-      Array.from({ length: STREAMS }, (_, i) =>
-        fetch(`https://speed.cloudflare.com/__up?r=${ts}${i}`, {
-          method: 'POST',
-          body: payload,
-          cache: 'no-store',
-          headers: { 'Content-Type': 'application/octet-stream' }
-        }).then(r => r.text())
-      )
-    );
-    const elapsed = (performance.now() - start) / 1000;
-    ulMbps = ((STREAMS * SIZE * 8) / elapsed / 1e6).toFixed(2);
+    ulMbps = await measureUploadXHR(API_URL, 5000000); // 5MB
   } catch (e) {
-    console.warn('Upload Cloudflare falhou, usando fallback Apps Script:', e);
-    // Fallback: POST para o próprio Apps Script
-    try {
-      const SIZE_FB = 500000;
-      const fd = new FormData();
-      fd.append('action', 'speedtest_upload');
-      fd.append('payload', new Blob([new Uint8Array(SIZE_FB)]));
-      const start = performance.now();
-      await fetch(API_URL, { method: 'POST', body: fd, redirect: 'follow' });
-      const elapsed = Math.max((performance.now() - start) / 1000 - 0.8, 0.05);
-      ulMbps = ((SIZE_FB * 8) / elapsed / 1e6).toFixed(2) + ' (est.)';
-    } catch (e2) {
-      ulMbps = 'Erro';
-    }
+    console.warn('Erro upload:', e);
+    ulMbps = 'Erro';
   }
 
-  checkinSpeedData = { download: dlMbps, upload: ulMbps, tipo: tipoConexao };
+  // --- TIPO DE CONEXÃO ---
+  const tipoKey = await detectConnectionType();
+  const tipoLabels = {
+    'desktop-cabo':  '🖥️ Desktop · Cabo de Rede',
+    'desktop-wifi':  '💻 Desktop · Wi-Fi',
+    'celular-wifi':  '📱 Celular · Wi-Fi',
+    'celular-dados': '📱 Celular · Dados móveis'
+  };
+
   document.getElementById('st-download').textContent = dlMbps;
   document.getElementById('st-upload').textContent = ulMbps;
-  document.getElementById('st-tipo').textContent = tipoConexao;
+  document.getElementById('st-tipo').textContent = tipoLabels[tipoKey] || tipoKey;
+
+  // Pre-seleciona o seletor com o valor detectado
+  const sel = document.getElementById('st-conexao-selector');
+  if (sel) sel.value = tipoKey;
+
   document.getElementById('st-results').style.display = 'block';
+
+  // Atualiza checkinSpeedData com o tipo selecionado
+  checkinSpeedData = { download: dlMbps, upload: ulMbps, tipo: tipoLabels[tipoKey] };
+  updateCheckinSpeedData();
+
   btn.textContent = '✅ Teste Concluído';
   btn.disabled = false;
 }

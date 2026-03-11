@@ -162,11 +162,20 @@
       <span class="st-title">🌐 Teste de Velocidade</span>
       <span class="st-disclaimer">ℹ️ Para melhor performance, utilize conexão via cabo de rede. O resultado via Wi-Fi pode variar.</span>
       <button type="button" id="speedtest-btn" class="st-run-btn" onclick="runCheckinSpeedTest()">🚀 Iniciar Teste</button>
-      <div id="st-results" class="st-results">
-        <p>📥 Download: <strong id="st-download">--</strong> Mbps</p>
-        <p>📤 Upload: <strong id="st-upload">--</strong> Mbps</p>
-        <p>🔌 Tipo de conexão: <strong id="st-tipo">--</strong></p>
-      </div>
+     <div id="st-results" class="st-results">
+  <p>📥 Download: <strong id="st-download">--</strong> Mbps</p>
+  <p>📤 Upload: <strong id="st-upload">--</strong> Mbps</p>
+  <p style="margin-bottom:6px;">🔌 Tipo de conexão detectado: <strong id="st-tipo">--</strong></p>
+  <div id="st-conexao-wrap">
+    <label style="font-size:0.78rem;color:#555;font-weight:bold;display:block;margin-bottom:4px;">Confirme o tipo de conexão:</label>
+    <select id="st-conexao-selector" onchange="updateCheckinSpeedData()" style="font-size:0.82rem;padding:6px;width:100%;margin:0;border-radius:4px;border:1px solid #ddd;">
+      <option value="desktop-cabo">🖥️ Desktop · Cabo de Rede</option>
+      <option value="desktop-wifi">💻 Desktop · Wi-Fi</option>
+      <option value="celular-wifi">📱 Celular · Wi-Fi</option>
+      <option value="celular-dados">📱 Celular · Dados móveis</option>
+    </select>
+  </div>
+</div>
     </div>
 
     <button type="button" id="checkin-submit-btn" onclick="submitCheckin()">✅ Confirmar Check-in</button>
