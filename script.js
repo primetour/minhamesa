@@ -33,6 +33,7 @@ function showView(name) {
     if (el) el.style.display = 'block';
     if (name !== 'login') { const p = document.getElementById('login-password'); if (p) p.value = ''; }
     if (name !== 'checkin-email') { const e = document.getElementById('checkin-email-input'); if (e) e.value = ''; }
+    if (name === 'app') { generateSeats(); updateVisuals(); }  // ← linha adicionada
 }
 
 function doLogin() {
@@ -203,9 +204,15 @@ function updateOccupancyBar() {
     const pctGouvea  = (counts.Gouvea  / TOTAL_SEATS) * 100;
     const totalPct   = ((dayRes.length  / TOTAL_SEATS) * 100).toFixed(0);
 
-    document.getElementById('prog-aquario').style.width = `${pctAquario}%`;
-    document.getElementById('prog-salao').style.width   = `${pctSalao}%`;
-    document.getElementById('prog-gouvea').style.width  = `${pctGouvea}%`;
+    const progAq = document.getElementById('prog-aquario');
+    const progSa = document.getElementById('prog-salao');
+    const progGo = document.getElementById('prog-gouvea');
+    const total  = document.getElementById('total-percent');
+
+    if (progAq) progAq.style.width = `${pctAquario}%`;
+    if (progSa) progSa.style.width = `${pctSalao}%`;
+    if (progGo) progGo.style.width = `${pctGouvea}%`;
+    if (total)  total.textContent  = `Total: ${totalPct}%`;
 
     const tooltipAq = document.querySelector('#prog-aquario .tooltip');
     if (tooltipAq) tooltipAq.textContent = `Aquário: ${counts.Aquario}/${CAPACITIES.Aquario}`;
@@ -213,8 +220,6 @@ function updateOccupancyBar() {
     if (tooltipSa) tooltipSa.textContent = `Salão: ${counts.Salao}/${CAPACITIES.Salao}`;
     const tooltipGo = document.querySelector('#prog-gouvea .tooltip');
     if (tooltipGo) tooltipGo.textContent = `Gouvêa: ${counts.Gouvea}/${CAPACITIES.Gouvea}`;
-
-    document.getElementById('total-percent').textContent = `Total: ${totalPct}%`;
 }
 
 function renderDashboard() {
