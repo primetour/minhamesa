@@ -262,7 +262,7 @@ document.getElementById('reservation-form').addEventListener('submit', async (e)
     
     const fd = new FormData();
     fd.append('data', document.getElementById('reservation-date').value);
-    fd.append('nome', document.getElementById('full-name').value);
+    fd.append('nome', document.getElementById('full-name').value.trim().toLowerCase() + '@primetour.com.br');
     fd.append('setor', document.getElementById('department').value);
     fd.append('local', selectedSeat.dataset.loc);
     fd.append('baia', selectedSeat.dataset.row);

@@ -125,7 +125,13 @@
                 <p class="modal-detail">Assento: <span id="selected-seat"></span></p>
                 <form id="reservation-form">
                     <label>Nome Completo</label>
-                    <input type="text" id="full-name" required placeholder="Digite seu nome">
+                    <label>E-mail corporativo</label>
+<div class="email-input-wrap">
+  <input type="text" id="full-name" required placeholder="seunome"
+         pattern="[a-zA-Z0-9._\-]+" title="Use apenas letras, números, ponto, hífen ou underscore"
+         autocomplete="username" autocapitalize="none">
+  <span class="email-domain">@primetour.com.br</span>
+</div>
                     
                     <label>Setor</label>
                     <select id="department" required>
